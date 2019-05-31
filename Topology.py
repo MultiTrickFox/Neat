@@ -13,6 +13,7 @@ hm_outs = 2
 prob_mutate_add = 1
 prob_mutate_split = 1
 prob_mutate_alter = 1
+prob_mutate_express = 1
 prob_crossover = 1
 
 
@@ -32,7 +33,6 @@ class Node:
 
 
 class Connection:
-
     def __init__(self, innovation_id, from_node, to_node, weight, is_expressed):
         self.innovation_id = innovation_id
         self.from_node = from_node
@@ -45,7 +45,6 @@ class Connection:
 
 
 class Genome:
-
     def __init__(self, nodes=None, connections=list()):
         if not nodes:
             nodes = in_nodes + out_nodes  # [Node("in") for _ in range(hm_ins)] + [Node("out") for _ in range(hm_outs)]
@@ -64,13 +63,6 @@ out_nodes = [Node("out") for _ in range(hm_outs)]
 
 nodes_unique.extend(in_nodes)
 nodes_unique.extend(out_nodes)
-
-
-# fitness operation
-
-
-def fitness(genome):
-    pass  # todo
 
 
 # mutation operations
@@ -127,6 +119,9 @@ def mutate_add_connection(genome):
                         (node_to == connection_unique.to_node):
 
                     exists_in_global = True
+
+                    # update locals
+
                     connection = connection_unique.copy()
                     node_from = connection.from_node
                     node_to = connection.to_node
@@ -146,7 +141,7 @@ def mutate_add_connection(genome):
 
             else:
 
-                # update locals
+                # update genome
 
                 if node_from not in genome.nodes:
                     genome.nodes.append(node_from)
@@ -195,8 +190,9 @@ def mutate_split_connection(genome, connection=None):
 
                 exists_in_global = True
 
+                # update locals
+
                 node = connections_to_to_node[-1].from_node
-                connection1 = None
                 for c in connections_from_from_node:
                     if c.to_node == node:
                         connection1 = c.copy()
@@ -222,7 +218,7 @@ def mutate_split_connection(genome, connection=None):
 
             else:
 
-                # update locals
+                # update genome
 
                 if node not in genome.nodes:
                     genome.nodes.append(node)
@@ -236,9 +232,21 @@ def mutate_split_connection(genome, connection=None):
 
 
 def mutate_alter_connection(genome):
+
+    # change weight
+
     if random() < prob_mutate_alter:
         connection = choice(genome.connections)
         connection.weight += randn()
+
+
+def mutate_onoff_connection(genome):
+
+    # enable disable
+
+    if random() < prob_mutate_express:
+        connection = choice(genome.connections)
+        connection.is_expressed = not connection.is_expressed
 
 
 # crossover operation
@@ -266,20 +274,12 @@ def crossover(genome1, genome2):  # assuming genome1_fitness > genome2_fitness
 
             # mating
 
-            if not exists_in2:
+            connection = connection1.copy() if not exists_in2 else \
+                (connection1.copy() if random() < 0.5 else connection2.copy())
 
-                genome.connections.append(connection1.copy())
+            genome.connections.append(connection)
 
-                for e in (connection1.from_node, connection1.to_node):
-                    if e not in genome.nodes:
-                        genome.nodes.append(e)
-                        
-            else:
-
-                connection = connection1.copy() if random() < 0.5 else connection2.copy()
-                genome.connections.append(connection)
-
-                for e in (connection.from_node, connection.to_node):
+            for e in (connection.from_node, connection.to_node):
                     if e not in genome.nodes:
                         genome.nodes.append(e)
 

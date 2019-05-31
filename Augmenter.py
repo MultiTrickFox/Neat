@@ -1,4 +1,4 @@
-from model import *
+from Topology import *
 
 
 g = Genome()
