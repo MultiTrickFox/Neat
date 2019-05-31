@@ -7,8 +7,8 @@ debug = True
 
 # params
 
-hm_ins = 2
-hm_outs = 2
+hm_ins = 4
+hm_outs = 1
 
 prob_mutate_add = 1
 prob_mutate_split = 1
@@ -30,6 +30,7 @@ nodes_unique = []
 class Node:
     def __init__(self, node_type):
         self.type = node_type
+        self.outgoings = []
 
 
 class Connection:
@@ -56,9 +57,43 @@ class Topology:
     def copy(self):
         return Topology(self.nodes, self.connections)
 
-    def __call__(self):
+    def prop(self, node, incoming):
+        node.value += incoming
+        for child, weight in node.outgoings:
+            self.prop(child, incoming*weight)
+
+    def __call__(self, inputs):
+
         outs = [0.0 for _ in range(hm_outs)]
 
+        # initialize graph
+
+        for connection in self.connections:
+            connection.from_node.outgoings.append((connection.to_node, connection.weight))
+
+        for node in self.nodes:
+            node.value = 0
+
+        input_nodes = self.nodes[:hm_ins]
+        out_nodes = self.nodes[hm_ins:hm_ins+hm_outs]
+
+        # process graph
+
+        for input, input_node in zip(inputs, input_nodes):
+            for child, weight in input_node.outgoings:
+                self.prop(child, input*weight)
+
+        # collect outputs
+
+        outputs = [out_node.value for out_node in out_nodes]
+
+        # release graph
+
+        for node in self.nodes:
+            node.outgoings = []
+            node.value = 0
+
+        return [round(o) for o in outputs]
 
 
 # helpers
@@ -159,6 +194,9 @@ def mutate_add_connection(genome):
             if debug: print(f'creating connection {connection.from_node.type} -> {connection.to_node.type}')
 
             genome.connections.append(connection)
+
+        else:
+            if not connection.is_expressed: connection.is_expressed = not connection.is_expressed
 
 
 def mutate_split_connection(genome, connection=None):

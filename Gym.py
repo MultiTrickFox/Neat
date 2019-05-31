@@ -1,7 +1,7 @@
 import gym
 
 
-t_max = 5
+t_max = 50
 
 # installation instructions:
 # https://becominghuman.ai/getting-mario-back-into-the-gym-setting-up-super-mario-bros-in-openais-gym-8e39a96c1e41
@@ -30,8 +30,9 @@ def play_a_round(topology):
 
         env.render()
 
-        action = env.action_space.sample()  # choose random action
-        # TODO : action = topology(state)
+        # action = env.action_space.sample()  # choose random action
+        # print(type(action))
+        action = topology(state)[-1]
 
         state, reward, done, _ = env.step(action)  # feedback from environment
 
@@ -41,9 +42,8 @@ def play_a_round(topology):
 
 # test.
 
-from Topology import Topology
-play_a_round(Topology())
-
+# from Topology import Topology
+# play_a_round(Topology())
 
 env.close()
 

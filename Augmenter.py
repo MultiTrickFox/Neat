@@ -30,7 +30,7 @@ for _ in range(hm_iteration):
     news = [crossover(topology, choice(population)) for topology in population]
     population.extend(news)
 
-    results = sorted({_:test(topology) for _,t in enumerate(population)}.items(), key=itemgetter(1))
+    results = sorted({_:play_a_round(topology) for _,t in enumerate(population)}.items(), key=itemgetter(1))
 
     population = [population[e[0]] for e in results[:hm_fittest]]
     scores = [e[1] for e in results[:hm_fittest]]
