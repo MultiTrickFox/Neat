@@ -1,3 +1,6 @@
+from operator import itemgetter
+import Topology ; Topology.debug = False
+
 from Topology import *
 from Gym import *
 
@@ -9,19 +12,28 @@ hm_fittest = 40
 hm_iteration = 100
 
 
-population = tuple(Topology() for _ in range(hm_initial))
+population = [Topology() for _ in range(hm_initial)]
 
 for _ in range(hm_iteration):
 
-    # todo : mutate & crossover & fittests
+    muts = []
 
-    pass
-    # for topology in population:
-    #     population.append(mutate_add_connection(topology.copy()))
-    #     population.append(mutate_split_connection(topology.copy()))
-    #     population.append(mutate_alter_connection(topology.copy()))
+    for topology in population:
 
+        for mutation in (mutate_add_connection(topology.copy()),
+                         mutate_split_connection(topology.copy()),
+                         mutate_alter_connection(topology.copy())):
+            if mutation:
+                muts.append(mutation)
+    population.extend(muts)
 
+    news = [crossover(topology, choice(population)) for topology in population]
+    population.extend(news)
 
+    results = sorted({_:test(topology) for _,t in enumerate(population)}.items(), key=itemgetter(1))
 
+    population = [population[e[0]] for e in results[:hm_fittest]]
+    scores = [e[1] for e in results[:hm_fittest]]
 
+    sum_score = sum(scores) / len(population)
+    print(f'iteration {_} overall score: {sum_score}')

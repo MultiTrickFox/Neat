@@ -1,17 +1,25 @@
 import gym
 
+
 # installation instructions:
 # https://becominghuman.ai/getting-mario-back-into-the-gym-setting-up-super-mario-bros-in-openais-gym-8e39a96c1e41
 
+def test(topology):
+    from numpy.random import randn
+    return randn()
 
+
+'gym_flappy_bird'
 env = gym.make('SuperMarioBros-1-1-v0')
-state = env.reset()
+# env = gym.make('gym_flappy_bird')
 
 
 def play_a_round(topology):
 
+    state = env.reset()
     done = False
     t = 0
+
     while not done:
 
         action = env.action_space.sample()  # choose random action
@@ -25,8 +33,6 @@ def play_a_round(topology):
         # if not t % 100:
         #     print(t, info)
 
-
-play_a_round(None)
 
 
 

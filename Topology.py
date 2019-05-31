@@ -56,6 +56,10 @@ class Topology:
     def copy(self):
         return Topology(self.nodes, self.connections)
 
+    def __call__(self):
+        outs = [0.0 for _ in range(hm_outs)]
+
+
 
 # helpers
 
@@ -235,7 +239,7 @@ def mutate_alter_connection(genome):
 
     # change weight
 
-    if random() < prob_mutate_alter:
+    if len(genome.connections) > 0 and random() < prob_mutate_alter:
         connection = choice(genome.connections)
         connection.weight += randn()
 
@@ -244,7 +248,7 @@ def mutate_onoff_connection(genome):
 
     # enable disable
 
-    if random() < prob_mutate_express:
+    if len(genome.connections) > 0 and random() < prob_mutate_express:
         connection = choice(genome.connections)
         connection.is_expressed = not connection.is_expressed
 
