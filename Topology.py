@@ -10,11 +10,11 @@ debug = True
 hm_ins = 4
 hm_outs = 1
 
-prob_mutate_add = 1
-prob_mutate_split = 1
-prob_mutate_alter = 1
-prob_mutate_express = 1
-prob_crossover = 1
+prob_mutate_add = 0.5
+prob_mutate_split = 0.5
+prob_mutate_alter = 0.5
+prob_mutate_express = 0.5
+prob_crossover = 0.5
 
 
 # globals
@@ -64,8 +64,6 @@ class Topology:
 
     def __call__(self, inputs):
 
-        outs = [0.0 for _ in range(hm_outs)]
-
         # initialize graph
 
         for connection in self.connections:
@@ -93,7 +91,7 @@ class Topology:
             node.outgoings = []
             node.value = 0
 
-        return [round(o) for o in outputs]
+        return outputs
 
 
 # helpers
@@ -195,8 +193,8 @@ def mutate_add_connection(genome):
 
             genome.connections.append(connection)
 
-        else:
-            if not connection.is_expressed: connection.is_expressed = not connection.is_expressed
+        # else:  # optional.
+        #     if not connection.is_expressed: connection.is_expressed = not connection.is_expressed
 
 
 def mutate_split_connection(genome, connection=None):

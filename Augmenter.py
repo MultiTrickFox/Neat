@@ -1,5 +1,5 @@
 from operator import itemgetter
-import Topology ; Topology.debug = False
+import Topology ; Topology.debug = True
 
 from Topology import *
 from Gym import *
@@ -16,6 +16,8 @@ population = [Topology() for _ in range(hm_initial)]
 
 for _ in range(hm_iteration):
 
+    # mutate
+
     muts = []
 
     for topology in population:
@@ -27,8 +29,19 @@ for _ in range(hm_iteration):
                 muts.append(mutation)
     population.extend(muts)
 
-    news = [crossover(topology, choice(population)) for topology in population]
+    # breed
+
+    news = []
+
+    for topology in population:
+
+        res = crossover(topology, choice(population))
+        if res:
+            news.append(res)
+
     population.extend(news)
+
+    # survive
 
     results = sorted({_:play_a_round(topology) for _,t in enumerate(population)}.items(), key=itemgetter(1))
 
