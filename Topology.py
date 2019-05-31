@@ -21,8 +21,8 @@ prob_crossover = 1
 
 innovation_ctr = 0
 
-nodes_unique = []
 connections_unique = []
+nodes_unique = []
 
 
 # structs
@@ -45,9 +45,11 @@ class Connection:
 
 
 class Genome:
-    def __init__(self, nodes=None, connections=list()):
+    def __init__(self, nodes=None, connections=None):
         if not nodes:
-            nodes = in_nodes + out_nodes  # [Node("in") for _ in range(hm_ins)] + [Node("out") for _ in range(hm_outs)]
+            nodes = in_nodes + out_nodes
+        if not connections:
+            connections = []
         self.nodes = nodes
         self.connections = connections
 
@@ -61,8 +63,8 @@ class Genome:
 in_nodes = [Node("in") for _ in range(hm_ins)]
 out_nodes = [Node("out") for _ in range(hm_outs)]
 
-nodes_unique.extend(in_nodes)
-nodes_unique.extend(out_nodes)
+# nodes_unique.extend(in_nodes)
+# nodes_unique.extend(out_nodes)
 
 
 # mutation operations
@@ -134,10 +136,10 @@ def mutate_add_connection(genome):
 
                 connections_unique.append(connection.copy())
                 innovation_ctr += 1
-                if node_to not in nodes_unique:
-                    nodes_unique.append(node_to)
-                if node_from not in nodes_unique:
-                    nodes_unique.append(node_from)
+                # if node_to not in nodes_unique:
+                #     nodes_unique.append(node_to)
+                # if node_from not in nodes_unique:
+                #     nodes_unique.append(node_from)
 
             else:
 
@@ -213,15 +215,13 @@ def mutate_split_connection(genome, connection=None):
 
                 connections_unique.append(connection1.copy())
                 connections_unique.append(connection2.copy())
-                if node not in nodes_unique:
-                    nodes_unique.append(node)
+                # if node not in nodes_unique:
+                #     nodes_unique.append(node)
 
-            else:
+            # update genome
 
-                # update genome
-
-                if node not in genome.nodes:
-                    genome.nodes.append(node)
+            if node not in genome.nodes:
+                genome.nodes.append(node)
 
             # create connection
 
