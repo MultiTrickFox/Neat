@@ -1,20 +1,27 @@
 from Topology import *
+from Gym import *
 
 
-g = Genome()
+hm_initial = 20
+hm_offspring_per = 2
+hm_fittest = 40
 
-mutate_add_connection(g)
-
-# for _ in range(10):
-#     mutate_split_connection(g)
-
-
-gc = Genome()
-
-mutate_add_connection(gc)
-
-g_child = crossover(g, gc)
+hm_iteration = 100
 
 
-mutate_split_connection(g_child)
+population = tuple(Topology() for _ in range(hm_initial))
+
+for _ in range(hm_iteration):
+
+    # todo : mutate & crossover & fittests
+
+    pass
+    # for topology in population:
+    #     population.append(mutate_add_connection(topology.copy()))
+    #     population.append(mutate_split_connection(topology.copy()))
+    #     population.append(mutate_alter_connection(topology.copy()))
+
+
+
+
 

@@ -1,4 +1,4 @@
-from random import choice, choices, random
+from random import choice, random
 from numpy.random import randn
 
 
@@ -44,7 +44,7 @@ class Connection:
         return Connection(self.innovation_id, self.from_node, self.to_node, self.weight, self.is_expressed)
 
 
-class Genome:
+class Topology:
     def __init__(self, nodes=None, connections=None):
         if not nodes:
             nodes = in_nodes + out_nodes
@@ -54,7 +54,7 @@ class Genome:
         self.connections = connections
 
     def copy(self):
-        return Genome(self.nodes, self.connections)
+        return Topology(self.nodes, self.connections)
 
 
 # helpers
@@ -258,7 +258,7 @@ def crossover(genome1, genome2):  # assuming genome1_fitness > genome2_fitness
 
         # new nodes are based on parent1
 
-        genome = Genome(genome1.nodes, [])
+        genome = Topology(genome1.nodes, [])
 
         # new connections are based on parent1 and parent2
 
