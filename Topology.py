@@ -10,11 +10,11 @@ debug = True
 hm_ins = 4
 hm_outs = 1
 
-prob_mutate_add = 0.5
-prob_mutate_split = 0.5
-prob_mutate_alter = 0.5
-prob_mutate_express = 0.5
-prob_crossover = 0.5
+prob_mutate_add = 0.75
+prob_mutate_split = 0.75
+prob_mutate_alter = 0.75
+prob_mutate_express = 0.75
+prob_crossover = 0.75
 
 
 # globals
@@ -193,6 +193,8 @@ def mutate_add_connection(genome):
 
             genome.connections.append(connection)
 
+            return genome
+
         # else:  # optional.
         #     if not connection.is_expressed: connection.is_expressed = not connection.is_expressed
 
@@ -270,6 +272,8 @@ def mutate_split_connection(genome, connection=None):
             genome.connections.append(connection1)
             genome.connections.append(connection2)
 
+            return genome
+
 
 def mutate_alter_connection(genome):
 
@@ -279,6 +283,8 @@ def mutate_alter_connection(genome):
         connection = choice(genome.connections)
         connection.weight += randn()
 
+        return genome
+
 
 def mutate_onoff_connection(genome):
 
@@ -287,6 +293,8 @@ def mutate_onoff_connection(genome):
     if len(genome.connections) > 0 and random() < prob_mutate_express:
         connection = choice(genome.connections)
         connection.is_expressed = not connection.is_expressed
+
+        return genome
 
 
 # crossover operation

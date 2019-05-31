@@ -1,5 +1,5 @@
 from operator import itemgetter
-import Topology ; Topology.debug = True
+import Topology ; Topology.debug = False
 
 from Topology import *
 from Gym import *
@@ -24,9 +24,11 @@ for _ in range(hm_iteration):
 
         for mutation in (mutate_add_connection(topology.copy()),
                          mutate_split_connection(topology.copy()),
-                         mutate_alter_connection(topology.copy())):
+                         mutate_alter_connection(topology.copy()),
+                         mutate_onoff_connection(topology.copy())):
             if mutation:
                 muts.append(mutation)
+
     population.extend(muts)
 
     # breed
