@@ -1,54 +1,79 @@
+from pickle import dump, load
 from operator import itemgetter
-import Topology ; Topology.debug = False
 
 from Topology import *
 from Gym import *
 
 
-hm_initial = 20
+load_model = True
+
+
+hm_initial = 50
 hm_offspring_per = 2
-hm_fittest = 40
+hm_fittest = 50
 
-hm_iteration = 100
+hm_iteration = 10
 
 
-population = [Topology() for _ in range(hm_initial)]
+if not load_model:
 
-for _ in range(hm_iteration):
+    population = [Topology() for _ in range(hm_initial)]
 
-    # mutate
+    for _ in range(hm_iteration):
 
-    muts = []
+        # mutate
 
-    for topology in population:
+        muts = []
 
-        for mutation in (mutate_add_connection(topology.copy()),
-                         mutate_split_connection(topology.copy()),
-                         mutate_alter_connection(topology.copy()),
-                         mutate_onoff_connection(topology.copy())):
-            if mutation:
-                muts.append(mutation)
+        for topology in population:
 
-    population.extend(muts)
+            for mutation in (mutate_add_connection(topology.copy()),
+                             mutate_split_connection(topology.copy()),
+                             mutate_alter_connection(topology.copy()),
+                             mutate_onoff_connection(topology.copy())):
+                if mutation:
+                    muts.append(mutation)
 
-    # breed
+        for mut in muts:
+            if mut in population:
+                print('wtf error2')
 
-    news = []
 
-    for topology in population:
+        population.extend(muts)
 
-        res = crossover(topology, choice(population))
-        if res:
-            news.append(res)
+        # breed
 
-    population.extend(news)
+        news = []
 
-    # survive
+        for topology in population:
 
-    results = sorted({_:play_a_round(topology) for _,t in enumerate(population)}.items(), key=itemgetter(1))
+            res = crossover(topology.copy(), choice(population).copy())
+            if res:
+                news.append(res)
 
-    population = [population[e[0]] for e in results[:hm_fittest]]
-    scores = [e[1] for e in results[:hm_fittest]]
+        population.extend(news)
 
-    sum_score = sum(scores) / len(population)
-    print(f'iteration {_} overall score: {sum_score}')
+        # survive
+
+        results = sorted({_:play_a_round(t) for _,t in enumerate(population)}.items(), key=itemgetter(1), reverse=True)
+
+        population = [population[e[0]] for e in results[:hm_fittest]]
+        scores = [e[1] for e in results[:hm_fittest]]
+
+        print(scores)
+
+        print(f'iteration {_} fitness: {scores[0]}, {sum(scores) / len(population)}', flush=True)
+        with open(f'iter{_}.pkl','wb+') as f:
+            dump(population[0], f)
+
+else:
+
+    with open('t.pkl','rb') as f:
+        topology = load(f)
+
+    print('Showing result..')
+
+    play(topology)
+
+
+env.close()

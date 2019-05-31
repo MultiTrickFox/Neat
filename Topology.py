@@ -1,8 +1,19 @@
 from random import choice, random
 from numpy.random import randn
+from math import exp
 
 
-debug = True
+def sigm(x):
+    return 1 / (1 + exp(-x))
+
+def relu(x):
+    if x < 0:
+        return 0
+    else:
+        return x
+
+
+debug = False
 
 
 # params
@@ -10,11 +21,11 @@ debug = True
 hm_ins = 4
 hm_outs = 1
 
-prob_mutate_add = 0.75
-prob_mutate_split = 0.75
-prob_mutate_alter = 0.75
-prob_mutate_express = 0.75
-prob_crossover = 0.75
+prob_mutate_add = 0.02
+prob_mutate_split = 0.01
+prob_mutate_alter = 0.2
+prob_mutate_express = 0.001
+prob_crossover = 0.02
 
 
 # globals
@@ -55,12 +66,15 @@ class Topology:
         self.connections = connections
 
     def copy(self):
-        return Topology(self.nodes, self.connections)
+        return Topology(self.nodes, self.connections.copy())
 
     def prop(self, node, incoming):
         node.value += incoming
         for child, weight in node.outgoings:
-            self.prop(child, incoming*weight)
+            try:
+                self.prop(child, relu(incoming*weight))
+            except:
+                print('wtf error.', incoming, weight, child==node)
 
     def __call__(self, inputs):
 

@@ -1,14 +1,12 @@
 import gym
 
-
 from math import exp
 
+def sigm(x):
+    return 1 / (1 + exp(-x))
 
-def smooth(x):
-    return round(1 / (1 + exp(-x)))
 
-
-t_max = 50
+t_max = 500
 
 
 # # env = gym.make('gym_flappy_bird')
@@ -34,7 +32,7 @@ def play_a_round(topology):
 
         env.render()
 
-        action = smooth(topology(state)[-1])
+        action = int(round(sigm(topology(state)[-1])))
 
         state, reward, done, _ = env.step(action)  # feedback from environment
 
@@ -49,7 +47,18 @@ def play_a_round(topology):
     return total_reward
 
 
-env.close()
+# env.close()
+
+def play(topology):
+
+    state = env.reset()
+
+    while 1:
+        env.render()
+
+        action = int(round(sigm(topology(state)[-1])))
+
+        state, reward, done, _ = env.step(action)
 
 
 # g = Topology()
