@@ -63,17 +63,19 @@ if not load_model:
         print(scores)
 
         print(f'iteration {_} fitness: {scores[0]}, {sum(scores) / len(population)}', flush=True)
-        with open(f'iter{_}.pkl','wb+') as f:
+        with open(f'iter{_}_fit.pkl','wb+') as f:
             dump(population[0], f)
+        with open(f'iter{_}_pop.pkl','wb+') as f:
+            dump(population, f)
 
 else:
 
-    with open('t.pkl','rb') as f:
-        topology = load(f)
+    with open('pop.pkl','rb') as f:
+        pop = load(f)
 
     print('Showing result..')
 
-    play(topology)
+    play(pop[2])
 
 
 env.close()

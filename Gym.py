@@ -6,7 +6,7 @@ def sigm(x):
     return 1 / (1 + exp(-x))
 
 
-t_max = 500
+t_max = 199
 
 
 # # env = gym.make('gym_flappy_bird')

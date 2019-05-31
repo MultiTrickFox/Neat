@@ -21,11 +21,13 @@ debug = False
 hm_ins = 4
 hm_outs = 1
 
-prob_mutate_add = 0.02
+prob_mutate_add = 0.2
 prob_mutate_split = 0.01
 prob_mutate_alter = 0.2
 prob_mutate_express = 0.001
-prob_crossover = 0.02
+prob_crossover = 0
+
+activation = sigm
 
 
 # globals
@@ -72,7 +74,7 @@ class Topology:
         node.value += incoming
         for child, weight in node.outgoings:
             try:
-                self.prop(child, relu(incoming*weight))
+                self.prop(child, activation(incoming*weight))
             except:
                 print('wtf error.', incoming, weight, child==node)
 
