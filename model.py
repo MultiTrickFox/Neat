@@ -155,7 +155,7 @@ def mutate_add_connection(genome):
 
             # create connection
 
-            if debug: print(f'creating connection: {connection.from_node.type} -> {connection.to_node.type}')
+            if debug: print(f'creating connection {connection.from_node.type} -> {connection.to_node.type}')
 
             genome.connections.append(connection)
 
@@ -267,8 +267,20 @@ def crossover(genome1, genome2):  # assuming genome1_fitness > genome2_fitness
             # mating
 
             if not exists_in2:
+
                 genome.connections.append(connection1.copy())
+
+                for e in (connection1.from_node, connection1.to_node):
+                    if e not in genome.nodes:
+                        genome.nodes.append(e)
+                        
             else:
-                genome.connections.append(connection1.copy() if random() < 0.5 else connection2.copy())
+
+                connection = connection1.copy() if random() < 0.5 else connection2.copy()
+                genome.connections.append(connection)
+
+                for e in (connection.from_node, connection.to_node):
+                    if e not in genome.nodes:
+                        genome.nodes.append(e)
 
         return genome
