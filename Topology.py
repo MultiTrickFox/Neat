@@ -1,5 +1,9 @@
+from sklearn.manifold import TSNE
+
 from random import choice, random
 from numpy.random import randn
+
+from numpy import array
 
 from copy import copy
 
@@ -105,6 +109,8 @@ class Topology:
 # helpers
 
 
+tsne = TSNE(n_iter=250, n_components=2)
+
 in_nodes = [Node(_, "in") for _ in range(hm_ins)]
 out_nodes = [Node(_, "out") for _ in range(hm_outs)]
 
@@ -152,47 +158,77 @@ def topology_difference(topology1, topology2, k1=1, k2=1, k3=0.4):
 
 def divide_into_species(population):
 
-    species = []
+    species = [[], [], [], []]
 
-    differences = []
-    for i, t1 in enumerate(population):
-        differences.append([])
-        for t2 in population[i+1:]:
-            differences[-1].append(topology_difference(t1, t2))
+    # calculate differences
 
-    diffs = [e1 for e2 in differences for e1 in e2]
-    avg_difference = sum(diffs) / len(diffs)
+    # differences = []
+    #
+    # for i, t1 in enumerate(population):
+    #     differences.append([])
+    #     for t2 in population[i+1:]:
+    #         differences[-1].append(topology_difference(t1, t2))
+    #
+    # diffs = [e1 for e2 in differences for e1 in e2]
+    # avg_difference = sum(diffs) / len(diffs)
 
-    for i1, diffs in enumerate(differences):
-        for i2, diff in enumerate(diffs):
-            if diff < avg_difference:
-                pass
-                 # does i1 have a specie
-                 # does i2 have a specie
-                 # xor -> add to the one that has
-                 # both -> do nothing
-                 # nor -> check if smt similar to them exist
+    # similar topologies wrt each topology
 
+    # similars = [[t2 for i2, t2 in enumerate(population[i1+1:])
+    #                 if differences[i1][i2] < avg_difference]
+    #                     for i1, t1 in enumerate(population)]
 
-    species = [[], []]
+    # tsne
 
-    sentinel = 0  # all elements are checked wrt. population[0]
+    innovations = [[conn.innovation_id for conn in topology.connections] for topology in population]
 
-    differences = [[topology_difference(t1, t2) if t1 != t2 else None
-                    for t2 in population]
-                   for t1 in population]
+    tsne_input = [[1 if _ in innovations[i] else 0 for _ in range(innovation_ctr if innovation_ctr !=0 else 1)] for i,topology in enumerate(population)]
+    tsne_output = tsne.fit_transform(array(tsne_input))
+    xs, ys = tsne_output[:, 0], tsne_output[:, 1]
 
-    avg_difference = sum([e for diff in differences for e in diff if e is not None]) / (
-                len(population) * (len(population) - 1))
+    locations = tuple((x,y) for x,y in zip(xs,ys))
 
-    for i,topology in enumerate(population):
-        diffs = differences[i]
-        if diffs[sentinel] is not None:
+    min_x, max_x = min(tsne_output[:, 0]), max(tsne_output[:, 0])
+    min_y, max_y = min(tsne_output[:, 1]), max(tsne_output[:, 1])
 
-            if diffs[sentinel] <= avg_difference:
+    mid_x, mid_y = (min_x+max_x)/2, (min_y+max_y)/2
+
+    for i, topology in enumerate(population):
+        x,y = locations[i]
+
+        if x < mid_x:
+            if y < mid_y:
                 species[0].append(topology)
-            elif avg_difference < diffs[sentinel]:
+
+            else:
                 species[1].append(topology)
+        else:
+            if y < mid_y:
+                species[2].append(topology)
+
+            else:
+                species[3].append(topology)
+
+
+    # species = [[], []]
+    #
+    # sentinel = 0  # all elements are checked wrt. population[0]
+    #
+    # differences = [[topology_difference(t1, t2) if t1 != t2 else None
+    #                 for t2 in population]
+    #                for t1 in population]
+    #
+    # avg_difference = sum([e for diff in differences for e in diff if e is not None]) / (
+    #             len(population) * (len(population) - 1))
+    #
+    # for i,topology in enumerate(population):
+    #     diffs = differences[i]
+    #     if diffs[sentinel] is not None:
+    #
+    #         if diffs[sentinel] <= avg_difference:
+    #             species[0].append(topology)
+    #         elif avg_difference < diffs[sentinel]:
+    #             species[1].append(topology)
 
     if debug: print(f'species: {len(species[0])} - {len(species[1])}')
 
