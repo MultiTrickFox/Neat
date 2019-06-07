@@ -9,7 +9,7 @@ load_model = False
 
 
 hm_initial = 50
-hm_fittest = 50
+hm_fittest = 20
 
 hm_iteration = 1_000
 
@@ -39,7 +39,8 @@ if not load_model:
             for mutation in (mutate_add_connection(copy(topology)),
                              mutate_split_connection(copy(topology)),
                              mutate_alter_connection(copy(topology)),
-                             mutate_onoff_connection(copy(topology))):
+                             mutate_onoff_connection(copy(topology)),
+                             ):
                 if mutation:
                     muts.append(mutation)
 
@@ -49,11 +50,12 @@ if not load_model:
 
         news = []
 
-        for topology in population[:int(hm_fittest/2)]:
+        for i, topology1 in enumerate(population):
+            for topology2 in population[i+1:]:
 
-            res = crossover(copy(topology), copy(choice(population[:int(hm_fittest/2)])))
-            if res:
-                news.append(res)
+                res = crossover(copy(topology1), copy(topology2))
+                if res:
+                    news.append(res)
 
         population.extend(news)
 
