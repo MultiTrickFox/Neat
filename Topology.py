@@ -1,16 +1,10 @@
 from random import choice, random
 from numpy.random import randn
-from math import exp
 
+from copy import copy
 
-def sigm(x):
-    return 1 / (1 + exp(-x))
-
-def relu(x):
-    if x < 0:
-        return 0
-    else:
-        return x
+from scipy.special import softmax
+from scipy.special import expit as sigm
 
 
 debug = False
@@ -18,32 +12,37 @@ debug = False
 
 # params
 
-hm_ins = 4
+hm_ins  = 2
 hm_outs = 1
 
-prob_mutate_add = 0.2
-prob_mutate_split = 0.01
-prob_mutate_alter = 0.2
-prob_mutate_express = 0.001
-prob_crossover = 0
-
-activation = sigm
+prob_crossover      = .35
+prob_mutate_add     = .2
+prob_mutate_split   = .04
+prob_mutate_alter   = .08
+prob_mutate_express = .06
 
 
 # globals
 
 innovation_ctr = 0
+hidden_ctr = 0
 
 connections_unique = []
-nodes_unique = []
 
 
 # structs
 
 class Node:
-    def __init__(self, node_type):
-        self.type = node_type
+    def __init__(self, hidden_id, type):
+        self.type = type
+        self.id = hidden_id
+
+        # graph builder variables ; reminder : if used, immediately =[] & =0 after the operation.
         self.outgoings = []
+        self.value = 0
+
+    def __str__(self):
+        return self.type + str(self.id)
 
 
 class Connection:
@@ -54,31 +53,22 @@ class Connection:
         self.weight = weight
         self.is_expressed = is_expressed
 
-    def copy(self):
+    def __copy__(self):
         return Connection(self.innovation_id, self.from_node, self.to_node, self.weight, self.is_expressed)
+
+    def __eq__(self, other):
+        return (self.from_node == other.from_node) and (self.to_node == other.to_node)
 
 
 class Topology:
     def __init__(self, nodes=None, connections=None):
-        if not nodes:
-            nodes = in_nodes + out_nodes
-        if not connections:
-            connections = []
-        self.nodes = nodes
-        self.connections = connections
+        self.nodes = nodes if nodes else in_nodes + out_nodes
+        self.connections = connections if connections else []
 
-    def copy(self):
-        return Topology(self.nodes, self.connections.copy())
+    def __copy__(self):
+        return Topology(self.nodes, [copy(connection) for connection in self.connections])
 
-    def prop(self, node, incoming):
-        node.value += incoming
-        for child, weight in node.outgoings:
-            try:
-                self.prop(child, activation(incoming*weight))
-            except:
-                print('wtf error.', incoming, weight, child==node)
-
-    def __call__(self, inputs):
+    def __call__(self, in_vector):
 
         # initialize graph
 
@@ -93,9 +83,9 @@ class Topology:
 
         # process graph
 
-        for input, input_node in zip(inputs, input_nodes):
+        for input, input_node in zip(in_vector, input_nodes):
             for child, weight in input_node.outgoings:
-                self.prop(child, input*weight)
+                self.forward(child, input * weight)
 
         # collect outputs
 
@@ -109,15 +99,122 @@ class Topology:
 
         return outputs
 
+    def forward(self, node, incoming):
+        node.value += incoming
+        for child, weight in node.outgoings:
+            try:
+                self.forward(child, incoming * weight)
+            except:
+                print('wtf error.') # TODO: this is caused by circular link.
+
 
 # helpers
 
 
-in_nodes = [Node("in") for _ in range(hm_ins)]
-out_nodes = [Node("out") for _ in range(hm_outs)]
+in_nodes = [Node(_, "in") for _ in range(hm_ins)]
+out_nodes = [Node(_, "out") for _ in range(hm_outs)]
 
 # nodes_unique.extend(in_nodes)
 # nodes_unique.extend(out_nodes)
+
+
+def topology_difference(topology1, topology2, k1=1, k2=1, k3=1):
+
+    if bool(topology1.connections and topology2.connections):
+
+        # initialize variables
+
+        hm_connections1, hm_connections2 = len(topology1.connections), len(topology2.connections)
+        hm_connections = max(hm_connections1, hm_connections2)
+        # innovations1 = [connection.innovation_id for connection in topology1.connections]
+        innovations2 = [connection.innovation_id for connection in topology2.connections]
+        # max_innovation1, min_innovation1 = max(innovations1), min(innovations1)
+        max_innovation2, min_innovation2 = max(innovations2), min(innovations2)
+
+        hm_excess_connections = 0
+        hm_disjoint_connections = 0
+        avg_weight_difference = 0
+
+        # count up details
+
+        for connection1 in topology1.connections:
+            for connection2 in topology2.connections:
+
+                if (connection1.from_node != connection2.from_node) and \
+                        (connection1.to_node != connection2.to_node):
+                    if min_innovation2 < connection1.innovation_id < max_innovation2:
+                        hm_disjoint_connections += 1
+                    else:
+                        hm_excess_connections += 1
+
+                avg_weight_difference += abs(connection1.weight-connection2.weight)
+
+        avg_weight_difference /= hm_connections1*hm_connections2
+
+        # apply formula
+
+        return k1*hm_excess_connections/hm_connections + k2*hm_disjoint_connections/hm_connections + k3*avg_weight_difference
+
+    else:
+
+        return 0
+
+
+def divide_into_species(population):
+    species = [[], []]
+
+    differences = [[topology_difference(t1,t2) if t1 != t2 else None
+                        for t2 in population]
+                            for t1 in population]
+    avg_difference = sum([e for diff in differences for e in diff if e is not None])/(len(population)*(len(population)-1))
+
+    sentinel = 0  # all elements are checked wrt. population[0]
+
+    for i,topology in enumerate(population):
+        diffs = differences[i]
+        if diffs[sentinel] is not None:
+
+            if diffs[sentinel] <= avg_difference:
+                species[0].append(topology)
+            elif avg_difference < diffs[sentinel]:
+                species[1].append(topology)
+
+    if debug: print(f'species {len(species[0])} - {len(species[1])}')
+
+    return species
+
+
+def is_reachable(args):
+
+    node_from, node_to = args
+
+    if node_from == node_to: return True
+
+    # build graph
+
+    node_from.outgoings = [connection.to_node for connection in connections_unique if connection.from_node == node_from]
+
+    # process
+
+    if not node_from.outgoings:
+
+        is_it = False
+
+    else:
+
+        if node_to in node_from.outgoings:
+
+            is_it = True
+
+        else:
+
+            is_it = any(map(is_reachable, [(node, node_to) for node in node_from.outgoings]))
+
+    # release graph
+
+    node_from.outgoings = []
+
+    return is_it
 
 
 # mutation operations
@@ -136,7 +233,10 @@ def mutate_add_connection(genome):
 
         while (node_from.type == "in" and node_to.type == "in") \
                 or \
-                (node_from.type == "out" and node_to.type == "out"):
+                (node_from.type == "out" and node_to.type == "out")\
+                    or \
+                        is_reachable((node_to, node_from)):
+
             node_from = choice(genome.nodes)
             node_to = choice(genome.nodes)
 
@@ -177,7 +277,7 @@ def mutate_add_connection(genome):
 
                     # update locals
 
-                    connection = connection_unique.copy()
+                    connection = copy(connection_unique)
                     node_from = connection.from_node
                     node_to = connection.to_node
 
@@ -187,7 +287,7 @@ def mutate_add_connection(genome):
 
                 # update globals
 
-                connections_unique.append(connection.copy())
+                connections_unique.append(copy(connection))
                 innovation_ctr += 1
                 # if node_to not in nodes_unique:
                 #     nodes_unique.append(node_to)
@@ -205,20 +305,21 @@ def mutate_add_connection(genome):
 
             # create connection
 
-            if debug: print(f'creating connection {connection.from_node.type} -> {connection.to_node.type}')
+            if debug: print(f'creating connection {connection.from_node} -> {connection.to_node}')
 
             genome.connections.append(connection)
 
             return genome
 
-        # else:  # optional.
-        #     if not connection.is_expressed: connection.is_expressed = not connection.is_expressed
+        else:  # optional.
+            if not connection.is_expressed: connection.is_expressed = not connection.is_expressed
 
 
 def mutate_split_connection(genome, connection=None):
     if len(genome.connections) > 0 and random() < prob_mutate_split:
 
         global innovation_ctr
+        global hidden_ctr
         global connections_unique
 
         if not connection: connection = choice(genome.connections)
@@ -255,13 +356,13 @@ def mutate_split_connection(genome, connection=None):
                 node = connections_to_to_node[-1].from_node
                 for c in connections_from_from_node:
                     if c.to_node == node:
-                        connection1 = c.copy()
+                        connection1 = copy(c)
                         break
-                connection2 = connections_to_to_node[-1].copy()
+                connection2 = copy(connections_to_to_node[-1])
 
             else:
 
-                node = Node("hidden")
+                node = Node(hidden_ctr, "hidden")
                 connection1 = Connection(innovation_ctr, connection.from_node, node, 1.0, True)
                 innovation_ctr += 1
                 connection2 = Connection(innovation_ctr, node, connection.to_node, connection.weight, True)
@@ -271,8 +372,9 @@ def mutate_split_connection(genome, connection=None):
 
                 # update globals
 
-                connections_unique.append(connection1.copy())
-                connections_unique.append(connection2.copy())
+                connections_unique.append(copy(connection1))
+                connections_unique.append(copy(connection2))
+                hidden_ctr += 1
                 # if node not in nodes_unique:
                 #     nodes_unique.append(node)
 
@@ -283,7 +385,7 @@ def mutate_split_connection(genome, connection=None):
 
             # create connection
 
-            if debug: print(f'splitting connection {connection.from_node.type} -> {connection.to_node.type}')
+            if debug: print(f'splitting connection {connection.from_node} -> {connection.to_node}')
 
             genome.connections.append(connection1)
             genome.connections.append(connection2)
@@ -338,8 +440,8 @@ def crossover(genome1, genome2):  # assuming genome1_fitness > genome2_fitness
 
             # mating
 
-            connection = connection1.copy() if not exists_in2 else \
-                (connection1.copy() if random() < 0.5 else connection2.copy())
+            connection = copy(connection1)if not exists_in2 else \
+                (copy(connection1) if random() < 0.5 else copy(connection2))
 
             genome.connections.append(connection)
 

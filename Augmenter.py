@@ -5,14 +5,13 @@ from Topology import *
 from Gym import *
 
 
-load_model = True
+load_model = False
 
 
 hm_initial = 50
-hm_offspring_per = 2
 hm_fittest = 50
 
-hm_iteration = 10
+hm_iteration = 1_000
 
 
 if not load_model:
@@ -21,23 +20,28 @@ if not load_model:
 
     for _ in range(hm_iteration):
 
+        # TODO block
+
+        # separate into species
+        # hm_fittest of each specie
+        # breed
+
+        # pass
+
+
+
         # mutate
 
         muts = []
 
         for topology in population:
 
-            for mutation in (mutate_add_connection(topology.copy()),
-                             mutate_split_connection(topology.copy()),
-                             mutate_alter_connection(topology.copy()),
-                             mutate_onoff_connection(topology.copy())):
+            for mutation in (mutate_add_connection(copy(topology)),
+                             mutate_split_connection(copy(topology)),
+                             mutate_alter_connection(copy(topology)),
+                             mutate_onoff_connection(copy(topology))):
                 if mutation:
                     muts.append(mutation)
-
-        for mut in muts:
-            if mut in population:
-                print('wtf error2')
-
 
         population.extend(muts)
 
@@ -45,9 +49,9 @@ if not load_model:
 
         news = []
 
-        for topology in population:
+        for topology in population[:int(hm_fittest/2)]:
 
-            res = crossover(topology.copy(), choice(population).copy())
+            res = crossover(copy(topology), copy(choice(population[:int(hm_fittest/2)])))
             if res:
                 news.append(res)
 
@@ -55,18 +59,23 @@ if not load_model:
 
         # survive
 
-        results = sorted({_:play_a_round(t) for _,t in enumerate(population)}.items(), key=itemgetter(1), reverse=True)
+        species = divide_into_species(population)
 
-        population = [population[e[0]] for e in results[:hm_fittest]]
-        scores = [e[1] for e in results[:hm_fittest]]
+        species_results = [sorted({_:play_a_round(t) for _,t in enumerate(population)}.items(), key=itemgetter(1), reverse=True)
+                           for population in species]
 
-        print(scores)
+        # results = sorted({_:play_a_round(t) for _,t in enumerate(population)}.items(), key=itemgetter(1), reverse=True)
 
-        print(f'iteration {_} fitness: {scores[0]}, {sum(scores) / len(population)}', flush=True)
-        with open(f'iter{_}_fit.pkl','wb+') as f:
-            dump(population[0], f)
-        with open(f'iter{_}_pop.pkl','wb+') as f:
-            dump(population, f)
+        population = [population[e[0]] for specie_result in species_results for e in specie_result[:hm_fittest]]
+        scores = [sum([e[1] for e in specie_result[:hm_fittest]]) for specie_result in species_results]
+
+        # print(scores)
+
+        print(f'iteration {_} fitness: {sum(scores)}, {scores}', flush=True)
+        # with open(f'iter{_}_fit.pkl','wb+') as f:
+        #     dump(population[0], f)
+        # with open(f'iter{_}_pop.pkl','wb+') as f:
+        #     dump(population, f)
 
 else:
 
