@@ -3,9 +3,6 @@ from numpy.random import randn
 
 from copy import copy
 
-from scipy.special import softmax
-from scipy.special import expit as sigm
-
 
 debug = False
 
@@ -15,11 +12,11 @@ debug = False
 hm_ins  = 2
 hm_outs = 1
 
-prob_crossover      = .35
-prob_mutate_add     = .2
-prob_mutate_split   = .04
-prob_mutate_alter   = .08
-prob_mutate_express = .06
+prob_crossover      = 0.7
+prob_mutate_add     = 0.3
+prob_mutate_split   = 0.4
+prob_mutate_alter   = 0.2
+prob_mutate_express = 0.2
 
 
 # globals
@@ -102,10 +99,7 @@ class Topology:
     def forward(self, node, incoming):
         node.value += incoming
         for child, weight in node.outgoings:
-            try:
-                self.forward(child, incoming * weight)
-            except:
-                print('wtf error.') # TODO: this is caused by circular link.
+            self.forward(child, incoming * weight)
 
 
 # helpers
@@ -114,22 +108,18 @@ class Topology:
 in_nodes = [Node(_, "in") for _ in range(hm_ins)]
 out_nodes = [Node(_, "out") for _ in range(hm_outs)]
 
-# nodes_unique.extend(in_nodes)
-# nodes_unique.extend(out_nodes)
-
 
 def topology_difference(topology1, topology2, k1=1, k2=1, k3=1):
 
-    if bool(topology1.connections and topology2.connections):
+    if topology1.connections and topology2.connections:
 
         # initialize variables
 
         hm_connections1, hm_connections2 = len(topology1.connections), len(topology2.connections)
         hm_connections = max(hm_connections1, hm_connections2)
-        # innovations1 = [connection.innovation_id for connection in topology1.connections]
-        innovations2 = [connection.innovation_id for connection in topology2.connections]
-        # max_innovation1, min_innovation1 = max(innovations1), min(innovations1)
-        max_innovation2, min_innovation2 = max(innovations2), min(innovations2)
+
+        innovations1 = [connection.innovation_id for connection in topology2.connections]
+        max_innovation1, min_innovation1 = max(innovations1), min(innovations1)
 
         hm_excess_connections = 0
         hm_disjoint_connections = 0
@@ -142,7 +132,7 @@ def topology_difference(topology1, topology2, k1=1, k2=1, k3=1):
 
                 if (connection1.from_node != connection2.from_node) and \
                         (connection1.to_node != connection2.to_node):
-                    if min_innovation2 < connection1.innovation_id < max_innovation2:
+                    if min_innovation1 < connection2.innovation_id < max_innovation1:
                         hm_disjoint_connections += 1
                     else:
                         hm_excess_connections += 1
@@ -161,11 +151,13 @@ def topology_difference(topology1, topology2, k1=1, k2=1, k3=1):
 
 
 def divide_into_species(population):
+
     species = [[], []]
 
     differences = [[topology_difference(t1,t2) if t1 != t2 else None
                         for t2 in population]
                             for t1 in population]
+
     avg_difference = sum([e for diff in differences for e in diff if e is not None])/(len(population)*(len(population)-1))
 
     sentinel = 0  # all elements are checked wrt. population[0]
@@ -179,42 +171,73 @@ def divide_into_species(population):
             elif avg_difference < diffs[sentinel]:
                 species[1].append(topology)
 
-    if debug: print(f'species {len(species[0])} - {len(species[1])}')
+    if debug: print(f'species: {len(species[0])} - {len(species[1])}')
 
     return species
 
 
-def is_reachable(args):
+def is_reachable(node_from, node_to):
 
-    node_from, node_to = args
+    if node_from.type == "hidden" and node_to.type == "hidden":
 
-    if node_from == node_to: return True
+        if node_from == node_to: return True
 
-    # build graph
+        # build graph
 
-    node_from.outgoings = [connection.to_node for connection in connections_unique if connection.from_node == node_from]
+        node_from.outgoings = [connection.to_node for connection in connections_unique if connection.from_node == node_from]
 
-    # process
+        # process
 
-    if not node_from.outgoings:
+        if not node_from.outgoings:
 
-        is_it = False
-
-    else:
-
-        if node_to in node_from.outgoings:
-
-            is_it = True
+            is_it = False
 
         else:
 
-            is_it = any(map(is_reachable, [(node, node_to) for node in node_from.outgoings]))
+            if node_to in node_from.outgoings:
 
-    # release graph
+                is_it = True
 
-    node_from.outgoings = []
+            else:
 
-    return is_it
+                # print(len(node_from.outgoings))
+
+                is_it = any([is_reachable(node, node_to) for node in node_from.outgoings])
+
+        # release graph
+
+        node_from.outgoings = []
+
+        return is_it
+
+    else:
+
+        return False
+
+
+def pick_nodes_to_connect(genome):
+
+    node_from = choice(genome.nodes)
+    node_to = choice(genome.nodes)
+
+    # check for self-connections
+
+    while (node_from.type == "in" and node_to.type == "in") \
+            or \
+            (node_from.type == "out" and node_to.type == "out"):
+        node_from = choice(genome.nodes)
+        node_to = choice(genome.nodes)
+
+    # check if connection needs to be reversed
+
+    if (node_from.type == "out" and node_to.type == "hidden") \
+            or \
+            (node_from.type == "hidden" and node_to.type == "in") \
+            or \
+            (node_from.type == "out" and node_to.type == "in"):
+        node_from, node_to = node_to, node_from
+
+    return node_from, node_to
 
 
 # mutation operations
@@ -226,29 +249,15 @@ def mutate_add_connection(genome):
         global innovation_ctr
         global connections_unique
 
-        node_from = choice(genome.nodes)
-        node_to = choice(genome.nodes)
+        # pick nodes to connect
 
-        # check for self-connections input & output
-
-        while (node_from.type == "in" and node_to.type == "in") \
-                or \
-                (node_from.type == "out" and node_to.type == "out")\
-                    or \
-                        is_reachable((node_to, node_from)):
-
-            node_from = choice(genome.nodes)
-            node_to = choice(genome.nodes)
-
-        # check if connection needs to be reversed
-
-        if (node_from.type == "out" and node_to.type == "hidden") \
-            or \
-                (node_from.type == "hidden" and node_to.type == "in") \
-                or \
-                    (node_from.type == "out" and node_to.type == "in"):
-
-            node_from, node_to = node_to, node_from
+        node_from, node_to = pick_nodes_to_connect(genome)
+        i = 0
+        while is_reachable(node_to, node_from) and i < 3:
+            node_from, node_to = pick_nodes_to_connect(genome)
+            i += 1
+            if i == 3 and is_reachable(node_to, node_from):
+                return
 
         # check if connection exists in genome
 
@@ -289,10 +298,6 @@ def mutate_add_connection(genome):
 
                 connections_unique.append(copy(connection))
                 innovation_ctr += 1
-                # if node_to not in nodes_unique:
-                #     nodes_unique.append(node_to)
-                # if node_from not in nodes_unique:
-                #     nodes_unique.append(node_from)
 
             else:
 
@@ -310,9 +315,6 @@ def mutate_add_connection(genome):
             genome.connections.append(connection)
 
             return genome
-
-        else:  # optional.
-            if not connection.is_expressed: connection.is_expressed = not connection.is_expressed
 
 
 def mutate_split_connection(genome, connection=None):
