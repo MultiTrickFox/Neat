@@ -12,7 +12,7 @@ debug = False
 hm_ins  = 2
 hm_outs = 1
 
-prob_crossover      = 0.7
+prob_crossover      = 0.5
 prob_mutate_add     = 0.3
 prob_mutate_split   = 0.4
 prob_mutate_alter   = 0.2
@@ -109,7 +109,7 @@ in_nodes = [Node(_, "in") for _ in range(hm_ins)]
 out_nodes = [Node(_, "out") for _ in range(hm_outs)]
 
 
-def topology_difference(topology1, topology2, k1=1, k2=1, k3=1):
+def topology_difference(topology1, topology2, k1=1, k2=1, k3=0.4):
 
     if topology1.connections and topology2.connections:
 
@@ -147,20 +147,43 @@ def topology_difference(topology1, topology2, k1=1, k2=1, k3=1):
 
     else:
 
-        return 0
+        return 1
 
 
 def divide_into_species(population):
 
+    species = []
+
+    differences = []
+    for i, t1 in enumerate(population):
+        differences.append([])
+        for t2 in population[i+1:]:
+            differences[-1].append(topology_difference(t1, t2))
+
+    diffs = [e1 for e2 in differences for e1 in e2]
+    avg_difference = sum(diffs) / len(diffs)
+
+    for i1, diffs in enumerate(differences):
+        for i2, diff in enumerate(diffs):
+            if diff < avg_difference:
+                pass
+                 # does i1 have a specie
+                 # does i2 have a specie
+                 # xor -> add to the one that has
+                 # both -> do nothing
+                 # nor -> check if smt similar to them exist
+
+
     species = [[], []]
 
-    differences = [[topology_difference(t1,t2) if t1 != t2 else None
-                        for t2 in population]
-                            for t1 in population]
-
-    avg_difference = sum([e for diff in differences for e in diff if e is not None])/(len(population)*(len(population)-1))
-
     sentinel = 0  # all elements are checked wrt. population[0]
+
+    differences = [[topology_difference(t1, t2) if t1 != t2 else None
+                    for t2 in population]
+                   for t1 in population]
+
+    avg_difference = sum([e for diff in differences for e in diff if e is not None]) / (
+                len(population) * (len(population) - 1))
 
     for i,topology in enumerate(population):
         diffs = differences[i]
@@ -315,6 +338,10 @@ def mutate_add_connection(genome):
             genome.connections.append(connection)
 
             return genome
+
+        else:
+
+            connection.is_expressed = True
 
 
 def mutate_split_connection(genome, connection=None):
