@@ -180,12 +180,13 @@ def divide_into_species(population):
 
     # tsne
 
-    innovations = [[conn.innovation_id for conn in topology.connections] for topology in population]
+    # innovations = [[conn.innovation_id for conn in topology.connections] for topology in population]
+    # tsne_input = [[1 if _ in innovations[i] else 0 for _ in range(innovation_ctr if innovation_ctr !=0 else 1)] for i,topology in enumerate(population)]
+    
+    tsne_input = [[topology_difference(t1,t2) if t1 != t2 else 0 for t1 in population] for t2 in population]
 
-    tsne_input = [[1 if _ in innovations[i] else 0 for _ in range(innovation_ctr if innovation_ctr !=0 else 1)] for i,topology in enumerate(population)]
     tsne_output = tsne.fit_transform(array(tsne_input))
     xs, ys = tsne_output[:, 0], tsne_output[:, 1]
-
     locations = tuple((x,y) for x,y in zip(xs,ys))
 
     min_x, max_x = min(tsne_output[:, 0]), max(tsne_output[:, 0])
