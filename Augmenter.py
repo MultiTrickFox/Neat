@@ -20,15 +20,33 @@ if not load_model:
 
     for _ in range(hm_iteration):
 
-        # TODO block
+        # specify
 
-        # separate into species
-        # hm_fittest of each specie
+        species = divide_into_species(population)
+
+        # survive
+
+        species_results = [
+            sorted({_: play_a_round(t) for _, t in enumerate(population)}.items(), key=itemgetter(1), reverse=True)
+            for population in species]
+
+        population = [population[e[0]] for specie_result in species_results for e in specie_result[:hm_fittest]]
+        scores = [sum([e[1] for e in specie_result[:hm_fittest]]) for specie_result in species_results]
+
+        print(f'iteration {_} fitness: {sum(scores)}, {scores}', flush=True)
+
         # breed
 
-        # pass
+        news = []
 
+        for i, topology1 in enumerate(population):
+            for topology2 in population[i + 1:]:
 
+                res = crossover(copy(topology1), copy(topology2))
+                if res:
+                    news.append(res)
+
+        population.extend(news)
 
         # mutate
 
@@ -46,34 +64,8 @@ if not load_model:
 
         population.extend(muts)
 
-        # breed
+        # save
 
-        news = []
-
-        for i, topology1 in enumerate(population):
-            for topology2 in population[i+1:]:
-
-                res = crossover(copy(topology1), copy(topology2))
-                if res:
-                    news.append(res)
-
-        population.extend(news)
-
-        # survive
-
-        species = divide_into_species(population)
-
-        species_results = [sorted({_:play_a_round(t) for _,t in enumerate(population)}.items(), key=itemgetter(1), reverse=True)
-                           for population in species]
-
-        # results = sorted({_:play_a_round(t) for _,t in enumerate(population)}.items(), key=itemgetter(1), reverse=True)
-
-        population = [population[e[0]] for specie_result in species_results for e in specie_result[:hm_fittest]]
-        scores = [sum([e[1] for e in specie_result[:hm_fittest]]) for specie_result in species_results]
-
-        # print(scores)
-
-        print(f'iteration {_} fitness: {sum(scores)}, {scores}', flush=True)
         # with open(f'iter{_}_fit.pkl','wb+') as f:
         #     dump(population[0], f)
         # with open(f'iter{_}_pop.pkl','wb+') as f:
