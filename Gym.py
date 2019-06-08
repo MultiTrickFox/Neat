@@ -1,64 +1,79 @@
 import gym
+# import universe
 
-from math import exp
-
-def sigm(x):
-    return 1 / (1 + exp(-x))
-
-
-t_max = 199
+from numpy import argmax
+from scipy.special import expit as sigm, softmax
+from numpy import tanh
 
 
-# # env = gym.make('gym_flappy_bird')
-# env = gym.make('SuperMarioBros-1-1-v0')
+t_max = 5_000
+
+average_eps = 1
+
+
 # installation instructions:
 # https://becominghuman.ai/getting-mario-back-into-the-gym-setting-up-super-mario-bros-in-openais-gym-8e39a96c1e41
 
 
-env = gym.make('CartPole-v0')
+# env = gym.make('ChopperCommand-ram-v0')
+env = gym.make('BipedalWalker-v2')
 
-# print(env.action_space)
 # print(env.observation_space)
+# print(env.action_space)
+#
+# print(env.reset())
+# print(env.action_space.sample())
 
 
 def play_a_round(topology):
 
-    state = env.reset()
-    done = False
-    total_reward = 0
-    t = 0
+    for _ in range(average_eps):
 
-    while not done:
+        state = env.reset()
+        done = False
+        total_reward = 0
+        t = 0
 
-        env.render()
+        while not done:
 
-        action = int(round(sigm(topology(state)[-1])))
+            # env.render()
 
-        state, reward, done, _ = env.step(action)  # feedback from environment
+            action = topology(state) # argmax(topology(state))
 
-        total_reward += reward
+            # print(action) # TODO : remove
 
-        if done:
-            env.reset()
-        else:
-            t += 1
-            done = t == t_max
+            state, reward, done, _ = env.step(action)  # feedback from environment
 
-    return total_reward
+            total_reward += reward
+
+            if done:
+                env.reset()
+            else:
+                t += 1
+                done = t == t_max
+
+    return total_reward / average_eps
 
 
 # env.close()
 
 def play(topology):
 
-    state = env.reset()
+    from time import sleep
 
     while 1:
-        env.render()
 
-        action = int(round(sigm(topology(state)[-1])))
+        state = env.reset()
 
-        state, reward, done, _ = env.step(action)
+        done = False
+        while not done:
+            env.render()
+
+            action = topology(state)
+
+            state, reward, done, _ = env.step(action)
+
+        sleep(5)
 
 
 # g = Topology()

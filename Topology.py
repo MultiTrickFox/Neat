@@ -3,7 +3,7 @@ from sklearn.manifold import TSNE
 from random import choice, random
 from numpy.random import randn
 
-from numpy import array
+from numpy import array, mean, tanh
 
 from copy import copy
 
@@ -13,14 +13,14 @@ debug = False
 
 # params
 
-hm_ins  = 2
-hm_outs = 1
+hm_ins  = 24
+hm_outs = 4
 
-prob_crossover      = 0.5
-prob_mutate_add     = 0.3
-prob_mutate_split   = 0.4
-prob_mutate_alter   = 0.2
-prob_mutate_express = 0.2
+prob_crossover      = .2
+prob_mutate_add     = .2
+prob_mutate_split   = .1
+prob_mutate_alter   = .2
+prob_mutate_express = .1
 
 
 # globals
@@ -109,7 +109,7 @@ class Topology:
 # helpers
 
 
-tsne = TSNE(n_iter=250, n_components=2)
+tsne = TSNE(n_iter=250, n_components=1)
 
 in_nodes = [Node(_, "in") for _ in range(hm_ins)]
 out_nodes = [Node(_, "out") for _ in range(hm_outs)]
@@ -123,6 +123,8 @@ def topology_difference(topology1, topology2, k1=1, k2=1, k3=0.4):
 
         hm_connections1, hm_connections2 = len(topology1.connections), len(topology2.connections)
         hm_connections = max(hm_connections1, hm_connections2)
+        if hm_connections < 20:
+            hm_connections = 1
 
         innovations1 = [connection.innovation_id for connection in topology2.connections]
         max_innovation1, min_innovation1 = max(innovations1), min(innovations1)
@@ -182,17 +184,15 @@ def divide_into_species(population):
 
     # innovations = [[conn.innovation_id for conn in topology.connections] for topology in population]
     # tsne_input = [[1 if _ in innovations[i] else 0 for _ in range(innovation_ctr if innovation_ctr !=0 else 1)] for i,topology in enumerate(population)]
-    
-    tsne_input = [[topology_difference(t1,t2) if t1 != t2 else 0 for t1 in population] for t2 in population]
+
+    tsne_input = [[topology_difference(t1,t2) if i1 < i2 else (0 if i1 == i2 else topology_difference(t2, t1)) for i2,t2 in enumerate(population)] for i1,t1 in enumerate(population)]
 
     tsne_output = tsne.fit_transform(array(tsne_input))
-    xs, ys = tsne_output[:, 0], tsne_output[:, 1]
+
+    xs, ys = tsne_output[:, 0], tsne_output[:, -1]
     locations = tuple((x,y) for x,y in zip(xs,ys))
 
-    min_x, max_x = min(tsne_output[:, 0]), max(tsne_output[:, 0])
-    min_y, max_y = min(tsne_output[:, 1]), max(tsne_output[:, 1])
-
-    mid_x, mid_y = (min_x+max_x)/2, (min_y+max_y)/2
+    mid_x, mid_y = mean(tsne_output[:, 0]), mean(tsne_output[:, -1])
 
     for i, topology in enumerate(population):
         x,y = locations[i]
@@ -376,19 +376,19 @@ def mutate_add_connection(genome):
 
             return genome
 
-        else:
+        # else: # optional.
+        #
+        #     connection.is_expressed = True
 
-            connection.is_expressed = True
 
-
-def mutate_split_connection(genome, connection=None):
+def mutate_split_connection(genome):
     if len(genome.connections) > 0 and random() < prob_mutate_split:
 
         global innovation_ctr
         global hidden_ctr
         global connections_unique
 
-        if not connection: connection = choice(genome.connections)
+        connection = choice(genome.connections)
         connection.is_expressed = False
 
         # check if connections exist in genome
@@ -405,7 +405,7 @@ def mutate_split_connection(genome, connection=None):
 
         if not exists_in_genome:
 
-            # check if connections exist in global
+            # check if connection exists in global
 
             exists_in_global = False
 
@@ -465,7 +465,10 @@ def mutate_alter_connection(genome):
 
     if len(genome.connections) > 0 and random() < prob_mutate_alter:
         connection = choice(genome.connections)
-        connection.weight += randn()
+        if random() < 0.5:
+            connection.weight += randn()
+        else:
+            connection.weight = randn()
 
         return genome
 
